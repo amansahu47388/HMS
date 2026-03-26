@@ -1,0 +1,197 @@
+import { useState, useEffect, useMemo } from "react";
+import AdminLayout from "../../../layout/AdminLayout";
+import MedicineSidebarMenu from "../../../components/Setup/Pharmacy/MedicineSidebarMenu";
+import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { useNotify } from "../../../context/NotificationContext";
+import {
+  getUnits,
+  createUnit,
+  updateUnit,
+  deleteUnit,
+} from "../../../api/pharmacyApi";
+
+export default function Unit() {
+  const notify = useNotify();
+  const [list, setList] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ id: null, unit_name: "" });
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const res = await getUnits();
+      setList(res.data || []);
+    } catch (err) {
+      notify("error", "Failed to load units");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredList = useMemo(() => {
+    if (!searchTerm) return list;
+    const term = searchTerm.toLowerCase();
+    return list.filter(item =>
+      item.unit_name?.toLowerCase().includes(term)
+    );
+  }, [list, searchTerm]);
+
+  const save = async () => {
+    if (!form.unit_name.trim()) {
+      notify("error", "Unit name is required");
+      return;
+    }
+
+    try {
+      if (form.id) {
+        await updateUnit(form.id, { unit_name: form.unit_name });
+        notify("success", "Unit updated successfully");
+      } else {
+        await createUnit({ unit_name: form.unit_name });
+        notify("success", "Unit created successfully");
+      }
+      setOpen(false);
+      loadData();
+    } catch (err) {
+      const msg = err.response?.data?.unit_name || "Failed to save unit";
+      notify("error", msg);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this unit?")) return;
+    try {
+      await deleteUnit(id);
+      notify("success", "Unit deleted successfully");
+      loadData();
+    } catch (err) {
+      notify("error", "Failed to delete unit");
+    }
+  };
+
+  return (
+    <AdminLayout>
+      <div className="min-h-screen p-1">
+        {/* HEADER */}
+        <div className="bg-white rounded-md p-3 mb-4 flex justify-between items-center shadow">
+          <h2 className="text-lg font-semibold">Unit List</h2>
+          <button
+            onClick={() => { setForm({ id: null, unit_name: "" }); setOpen(true); }}
+            className="flex items-center gap-2 bg-gradient-to-b from-[#6046B5] to-[#8A63D2] text-white px-4 py-2 rounded-md text-sm hover:opacity-90"
+          >
+            <Plus size={16} /> Add Unit
+          </button>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* LEFT MENU */}
+          <div className="w-full md:w-64 bg-white rounded-md p-3 shadow shrink-0 h-fit">
+            <MedicineSidebarMenu />
+          </div>
+
+          {/* TABLE CONTAINER */}
+          <div className="flex-1 bg-white rounded-md shadow p-4 overflow-hidden">
+            {/* Search and Icons */}
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <div className="relative w-72">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-2 pr-2 py-1 border-b focus:border-[#8A63D2] outline-none text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-[#f2f2f2] text-gray-600">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">ID</th>
+                    <th className="px-3 py-2 font-semibold">Unit Name</th>
+                    <th className="px-3 py-1.5 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="3" className="text-center py-4">Loading...</td>
+                    </tr>
+                  ) : filteredList.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="text-center py-4 text-gray-400">No records found</td>
+                    </tr>
+                  ) : (
+                    filteredList.map(row => (
+                      <tr key={row.id} className="hover:bg-gray-100 group border border-gray-200 focus:border-[#6046B5] focus:ring-0.5 focus:ring-[#8A63D2] outline-none transition rounded px-3 py-2 transition-all">
+                        <td className="px-3 py-2 font-medium">{row.id}</td>
+                        <td className="px-3 py-2">{row.unit_name}</td>
+                        <td className="px-3 py-2 text-right">
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => { setForm(row); setOpen(true); }}
+                              className="text-purple-600 hover:text-purple-800 hover:bg-purple-200 p-1 rounded"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(row.id)}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-200 p-1 rounded"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <div className="px-3 py-2 text-xs text-gray-500">
+                Records: 1 to {filteredList.length} of {filteredList.length}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL */}
+      {open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-lg rounded-md overflow-hidden shadow-xl">
+            <div className="flex justify-between items-center px-4 py-3 bg-gradient-to-b from-[#6046B5] to-[#8A63D2] text-white">
+              <h3 className="text-sm font-semibold">{form.id ? "Edit Unit" : "Add Unit"}</h3>
+              <button onClick={() => setOpen(false)}><X size={18} /></button>
+            </div>
+
+            <div className="p-4">
+              <label className="text-sm font-medium">Unit Name <span className="text-red-500">*</span></label>
+              <input
+                value={form.unit_name}
+                onChange={(e) => setForm({ ...form, unit_name: e.target.value })}
+                className="w-full mt-1 border border-gray-300 focus:border-[#6046B5] focus:ring-0.5 focus:ring-[#8A63D2] outline-none transition rounded px-3 py-2"
+                placeholder="Unit Name"
+              />
+            </div>
+
+            <div className="flex justify-end p-4 border-t border-gray-300 bg-gray-50">
+              <button
+                onClick={save}
+                className="bg-gradient-to-b from-[#6046B5] to-[#8A63D2] hover:opacity-90 text-white px-6 py-2 rounded text-sm transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </AdminLayout>
+  );
+}
