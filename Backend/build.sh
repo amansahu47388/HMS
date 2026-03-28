@@ -6,8 +6,8 @@ python manage.py collectstatic --noinput
 
 python manage.py migrate --noinput --fake-initial
 
-if [ "$CREATE_SUPERUSER" = "true" ]; then
-    python manage.py createsuperuser --noinput
-fi
+# if [ "$CREATE_SUPERUSER" = "true" ]; then
+#     python manage.py createsuperuser --noinput
+# fi
 
-# python scripts/ensure_superuser.py
+python scripts/ensure_superuser.py
