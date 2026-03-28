@@ -819,8 +819,12 @@ class PatientDashboardView(APIView):
 
             # 3. Top 10 Findings
             findings = Prescription.objects.filter(
-                patient_id=patient_id, 
-                findings__isnull=False
+                patient_id=patient_id,
+                findings__isnull=False,
+            ).exclude(
+                findings__finding_name__isnull=True,
+            ).exclude(
+                findings__finding_name="",
             ).values('findings__finding_name').annotate(
                 value=Count('findings')
             ).order_by('-value')[:10]

@@ -15,9 +15,11 @@ from admin_module.models import AdminProfile
 
 
 class IsSuperAdmin(permissions.BasePermission):
-    """Only superuser admins can access"""
+    """Superuser admins or users with admin role can access"""
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.is_superuser
+        return request.user and request.user.is_authenticated and (
+            request.user.is_superuser or getattr(request.user, 'role', None) == 'admin'
+        )
 
 
 class StaffManagementView(APIView):

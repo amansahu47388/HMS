@@ -97,6 +97,26 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             phone=phone,
             role='patient'
         )
+        # Link or create Patient record so JWT user payload includes patient_id
+        # (dashboard and portal APIs key off Patient.id).
+        from patient_module.models import Patient
+
+        existing = Patient.objects.filter(email=user.email).first()
+        if existing and existing.user_id is None:
+            existing.user = user
+            existing.save(update_fields=["user"])
+        elif existing is None:
+            full = (user.full_name or "").strip()
+            parts = full.split(None, 1)
+            first_name = parts[0] if parts else "Patient"
+            last_name = parts[1] if len(parts) > 1 else None
+            Patient.objects.create(
+                user=user,
+                first_name=first_name,
+                last_name=last_name,
+                email=user.email,
+                phone=user.phone or None,
+            )
         return user
 
 class AdminRegisterSerializer(serializers.ModelSerializer):
